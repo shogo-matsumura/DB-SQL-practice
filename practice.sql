@@ -224,7 +224,7 @@ FROM
     countries
 ORDER BY
     life_expectancy DESC,
-    indep_year ASC;
+    indep_year DESC;
 
 -- 問19
 -- 全ての国の国コードの一文字目と国名を表示させてください。
@@ -317,53 +317,28 @@ FROM
 -- 全ての有名人の名前,国名、第一言語を出力してください。
 SELECT
     celebrities.name AS name,
-    (
-        SELECT
-            countries.name
-        FROM
-            countries
-        WHERE
-            celebrities.country_code = countries.code
-        LIMIT
-            1
-    ) AS name,
-    (
-        SELECT
-            countrylanguages.language
-        FROM
-            countrylanguages
-        WHERE
-            celebrities.country_code = countrylanguages.country_code
-        ORDER BY
-            countrylanguages.percentage DESC
-        LIMIT
-            1
-    ) AS language
+    countries.name AS name,
+    countrylanguages.language AS language
 FROM
     celebrities
-WHERE
-    (
+    JOIN countries ON celebrities.country_code = countries.code
+    JOIN (
         SELECT
-            countries.name
-        FROM
-            countries
-        WHERE
-            celebrities.country_code = countries.code
-        LIMIT
-            1
-    ) IS NOT NULL
-    AND (
-        SELECT
+            countrylanguages.country_code,
             countrylanguages.language
         FROM
             countrylanguages
-        WHERE
-            celebrities.country_code = countrylanguages.country_code
-        ORDER BY
-            countrylanguages.percentage DESC
-        LIMIT
-            1
-    ) IS NOT NULL;
+            JOIN (
+                SELECT
+                    country_code,
+                    MAX(percentage) AS max_percentage
+                FROM
+                    countrylanguages
+                GROUP BY
+                    country_code
+            ) AS cl_max ON countrylanguages.country_code = cl_max.country_code
+            AND countrylanguages.percentage = cl_max.max_percentage
+    ) AS countrylanguages ON countries.code = countrylanguages.country_code;
 
 -- 問29
 -- 全ての有名人の名前と国名をに出力してください。 ただしテーブル結合せずサブクエリを使用してください。
@@ -419,11 +394,13 @@ WHERE
 -- 有名人の出身国の平均年齢を高い方から順に表示してください。ただし、FROM句はcountriesテーブルとしてください。
 SELECT
     countries.name AS 国名,
-    AVG(YEAR(NOW()) - YEAR(celebrities.birth)) AS 平均年齢
+    AVG(celebrities.age) AS 平均年齢
 FROM
     countries
     INNER JOIN celebrities ON countries.code = celebrities.country_code
 GROUP BY
     countries.name
+HAVING
+    AVG(celebrities.age) IS NOT NULL
 ORDER BY
     平均年齢 DESC;
